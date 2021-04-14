@@ -8,5 +8,5 @@ Depende de iTextSharp.
 
 
 # Tela do projeto
-![Screenshot of the program](https://imgur.com/5e4Z1lA)
+![Tela do projeto](https://i.imgur.com/5e4Z1lA.png)
 
