@@ -1,13 +1,12 @@
-# PDF-Page-Counter
-Small tool to count pages in multiple PDF files inside a directory. 
+# Contador de páginas de PDF
 
-Just drag & drop folders or multiple pdf files into program.
+Ferramenta simples para contar páginas em multiplos arquivos PDF dentro de uma pasta.
 
-It depends on iTextSharp library.
+Apnas araste a pasta ou os arquivos para dentro do programa.
 
-Sorry about spaghetti code.
-Feel free to fork it or edit it.
+Depende de iTextSharp.
 
-# Screenshot from program
-![Screenshot of the program](https://i.imgur.com/OiCU98L.png)
+
+# Tela do projeto
+![Tela do projeto](https://i.imgur.com/5e4Z1lA.png)
 
