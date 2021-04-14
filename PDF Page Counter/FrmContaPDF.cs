@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -6,6 +7,8 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using iTextSharp.text.pdf;
+using OfficeOpenXml;
+using OfficeOpenXml.Table;
 using static System.Int32;
 
 namespace PDF_Page_Counter
@@ -14,14 +17,18 @@ namespace PDF_Page_Counter
     {
         private static readonly string[] SizeSuffixes = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
         private readonly BackgroundWorker _bgw;
+        private List<PdfToCount> _pdfs;
+        public string[] RootFiles { get; private set; }
 
-        public MainForm()
+        public MainForm(string validadeInfo)
         {
+            _pdfs = new List<PdfToCount>();
             Application.VisualStyleState = VisualStyleState.NonClientAreaEnabled;
             InitializeComponent();
             _bgw = new BackgroundWorker();
             _bgw.DoWork += bgw_DoWork;
             _bgw.RunWorkerCompleted += bgw_RunWorkerCompleted;
+            this.Text += " - Finaliza em " + validadeInfo;
         }
 
         private void listView1_DragEnter(object sender, DragEventArgs e)
@@ -34,6 +41,7 @@ namespace PDF_Page_Counter
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 var s = (string[]) e.Data.GetData(DataFormats.FileDrop, false);
+                this.RootFiles = s;
                 _bgw.RunWorkerAsync(s);
             }
             while (_bgw.IsBusy)
@@ -48,6 +56,7 @@ namespace PDF_Page_Counter
 
         private void AddFileToListview(string fullFilePath)
         {
+            PdfToCount pdf = new PdfToCount();
             Cursor.Current = Cursors.WaitCursor;
             if (!File.Exists(fullFilePath))
                 return;
@@ -56,13 +65,14 @@ namespace PDF_Page_Counter
             if (dirName != null && dirName.EndsWith(Convert.ToString(Path.DirectorySeparatorChar)))
                 dirName = dirName.Substring(0, dirName.Length - 1);
             var itm = listView1.Items.Add(fileName);
+            pdf.Arquivo = fileName;
             if (fileName != null)
             {
                 // ReSharper disable once UnusedVariable
                 var fileInfo = new FileInfo(fileName);
             }
             var length = new FileInfo(fullFilePath).Length;
-
+            pdf.Tamanho = length;
             //size column
             itm.SubItems.Add(SizeSuffix(length));
 
@@ -71,9 +81,14 @@ namespace PDF_Page_Counter
             {
                 var pdfReader = new PdfReader(fullFilePath);
                 var numberOfPages = pdfReader.NumberOfPages;
-                itm.SubItems.Add("Bom");
-                itm.SubItems.Add(numberOfPages.ToString());
+                itm.SubItems.Add("Bom");                
+                itm.SubItems.Add(numberOfPages.ToString());                         
                 itm.SubItems.Add(dirName);
+
+                pdf.Status = "Bom";
+                pdf.Paginas = numberOfPages;
+                pdf.Caminho = dirName;
+                pdf.Erro = "";
             }
             catch (Exception e)
             {
@@ -81,6 +96,11 @@ namespace PDF_Page_Counter
                 itm.SubItems.Add("0");
                 itm.SubItems.Add(dirName);
                 itm.SubItems.Add(e.Message);
+
+                pdf.Status = "Arquivo corrompido";
+                pdf.Paginas = 0;
+                pdf.Caminho = dirName;
+                pdf.Erro = e.Message;
             }
 
             //calculate items count with linq
@@ -90,6 +110,7 @@ namespace PDF_Page_Counter
             //calculate total pages count with linq
             var countTotalPages = listView1.Items.Cast<ListViewItem>().Sum(item => Parse(item.SubItems[3].Text));
             toolStripStatusLabel4.Text = countTotalPages.ToString();
+            _pdfs.Add(pdf);
             Cursor.Current = Cursors.Default;
         }
 
@@ -124,6 +145,13 @@ namespace PDF_Page_Counter
         // Clears listview items sets counters to zero
         private void button2_Click(object sender, EventArgs e)
         {
+            this.RootFiles = null;
+            CleanAll();
+        }
+        private void CleanAll()
+        {
+            _pdfs = new List<PdfToCount>();
+           
             listView1.Items.Clear();
             toolStripStatusLabel3.Text = @"0";
             toolStripStatusLabel4.Text = @"0";
@@ -184,7 +212,71 @@ namespace PDF_Page_Counter
 
         private void button1_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Exportar Excel");
+           try
+            {
+                SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+                saveFileDialog1.Filter = "Planilha Excel|*.xlsx";
+                saveFileDialog1.Title = "Exportar";
+                saveFileDialog1.ShowDialog();
+
+                if (saveFileDialog1.FileName != "")
+                {
+                    string excelFile = saveFileDialog1.FileName;
+
+                    if (_pdfs.Count==0)
+                    {
+                        Cursor.Current = Cursors.Default;
+                        MessageBox.Show("Não foi possível exportar esta lista");
+                        return;
+                    }
+
+                    
+                    ExportXLSX(excelFile, _pdfs);
+
+                    System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(excelFile);
+                    psi.UseShellExecute = true;
+                    Process.Start(psi);
+                }
+            }
+            catch (Exception ex)
+            {
+                Cursor.Current = Cursors.Default;
+                MessageBox.Show("Falha interna, tente novamente " + ex);
+                return;
+            }
+
+
+        }
+
+        private void ExportXLSX(string excelFile, List<PdfToCount> pdfs)
+        {
+            ExcelPackage pck = new ExcelPackage();
+
+            var wsDt = pck.Workbook.Worksheets.Add("Dados");
+            wsDt.Cells["A1"].LoadFromCollection(pdfs, true, TableStyles.Medium9);
+            wsDt.Cells[wsDt.Dimension.Address].AutoFitColumns();
+            var fi = new FileInfo(excelFile);
+            if (fi.Exists)
+                fi.Delete();
+            pck.SaveAs(fi);
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            CleanAll();
+            if (this.RootFiles!=null)
+            {
+                  if (this.RootFiles.Length>0)
+                    _bgw.RunWorkerAsync(this.RootFiles);
+            }
+            while (_bgw.IsBusy)
+            {
+                Form overlay = new WorkingOverlay();
+                overlay.StartPosition = FormStartPosition.CenterParent;
+                overlay.Size = Size;
+                //overlay.ShowDialog(this);
+                Application.DoEvents();
+            }
         }
     }
 }
