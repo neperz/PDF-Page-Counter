@@ -15,6 +15,7 @@ namespace PDF_Page_Counter
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            //simple licence control
             DateTime dataRun;
             var file = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "sp.bin");
             if (!File.Exists(file))
@@ -24,7 +25,7 @@ namespace PDF_Page_Counter
                 var dataCripto = CAppSettings.EncryptString(dataTiks);
                 File.WriteAllText(file, dataCripto);
                 //  MessageBox.Show("Licença não encontrada.", "Licence Validator", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                Application.Run(new MainForm(dataRun.ToShortDateString()));
+                Application.Run(new FrmMain(dataRun.ToShortDateString()));
                 return;
             }
             try
@@ -32,7 +33,7 @@ namespace PDF_Page_Counter
                 var hoje = DateTime.Now;
                 var cData = File.ReadAllText(file);
                 var tData = CAppSettings.DecryptString(cData);
-                dataRun= DateTime.FromBinary(long.Parse(tData));
+                dataRun = DateTime.FromBinary(long.Parse(tData));
 
                 if (hoje >= dataRun)
                 {
@@ -45,7 +46,8 @@ namespace PDF_Page_Counter
 
                 throw;
             }
-            Application.Run(new MainForm(dataRun.ToShortDateString()));
+            Application.Run(new FrmMain(dataRun.ToShortDateString()));
+            // Application.Run(new FrmMain());
         }
     }
 }

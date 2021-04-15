@@ -4,23 +4,23 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using iTextSharp.text.pdf;
 using OfficeOpenXml;
 using OfficeOpenXml.Table;
-using static System.Int32;
 
 namespace PDF_Page_Counter
 {
-    public partial class MainForm : Form
+    public partial class FrmMain : Form
     {
-        private static readonly string[] SizeSuffixes = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+        private static readonly string[] SizeSuffixes = { "bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
         private readonly BackgroundWorker _bgw;
         private List<PdfToCount> _pdfs;
         public string[] RootFiles { get; private set; }
 
-        public MainForm(string validadeInfo)
+        public FrmMain(string cap)
         {
             _pdfs = new List<PdfToCount>();
             Application.VisualStyleState = VisualStyleState.NonClientAreaEnabled;
@@ -28,7 +28,23 @@ namespace PDF_Page_Counter
             _bgw = new BackgroundWorker();
             _bgw.DoWork += bgw_DoWork;
             _bgw.RunWorkerCompleted += bgw_RunWorkerCompleted;
-            this.Text += " - Finaliza em " + validadeInfo;
+            this.Text += " - Finaliza em " + cap;
+        }
+        public FrmMain()
+        {
+            _pdfs = new List<PdfToCount>();
+            Application.VisualStyleState = VisualStyleState.NonClientAreaEnabled;
+            InitializeComponent();
+            _bgw = new BackgroundWorker();
+            _bgw.DoWork += bgw_DoWork;
+            _bgw.RunWorkerCompleted += bgw_RunWorkerCompleted;
+            //this.Text += " - Finaliza em " + validadeInfo;
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            this.RootFiles = null;
+            CleanAll();
         }
 
         private void listView1_DragEnter(object sender, DragEventArgs e)
@@ -40,7 +56,7 @@ namespace PDF_Page_Counter
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                var s = (string[]) e.Data.GetData(DataFormats.FileDrop, false);
+                var s = (string[])e.Data.GetData(DataFormats.FileDrop, false);
                 this.RootFiles = s;
                 _bgw.RunWorkerAsync(s);
             }
@@ -53,7 +69,6 @@ namespace PDF_Page_Counter
                 Application.DoEvents();
             }
         }
-
         private void AddFileToListview(string fullFilePath)
         {
             PdfToCount pdf = new PdfToCount();
@@ -81,8 +96,8 @@ namespace PDF_Page_Counter
             {
                 var pdfReader = new PdfReader(fullFilePath);
                 var numberOfPages = pdfReader.NumberOfPages;
-                itm.SubItems.Add("Bom");                
-                itm.SubItems.Add(numberOfPages.ToString());                         
+                itm.SubItems.Add("Bom");
+                itm.SubItems.Add(numberOfPages.ToString());
                 itm.SubItems.Add(dirName);
 
                 pdf.Status = "Bom";
@@ -108,7 +123,7 @@ namespace PDF_Page_Counter
             toolStripStatusLabel3.Text = countItems.ToString();
 
             //calculate total pages count with linq
-            var countTotalPages = listView1.Items.Cast<ListViewItem>().Sum(item => Parse(item.SubItems[3].Text));
+            var countTotalPages = listView1.Items.Cast<ListViewItem>().Sum(item => Int32.Parse(item.SubItems[3].Text));
             toolStripStatusLabel4.Text = countTotalPages.ToString();
             _pdfs.Add(pdf);
             Cursor.Current = Cursors.Default;
@@ -120,11 +135,11 @@ namespace PDF_Page_Counter
             if (value == 0) return "0.0 bytes";
 
             // mag is 0 for bytes, 1 for KB, 2, for MB, etc.
-            var mag = (int) Math.Log(value, 1024);
+            var mag = (int)Math.Log(value, 1024);
 
             // 1L << (mag * 10) == 2 ^ (10 * mag) 
             // [i.e. the number of bytes in the unit corresponding to mag]
-            var adjustedSize = (decimal) value / (1L << (mag * 10));
+            var adjustedSize = (decimal)value / (1L << (mag * 10));
 
             // make adjustment when the value is large enough that
             // it would round up to 1000 or more
@@ -139,19 +154,10 @@ namespace PDF_Page_Counter
                 adjustedSize,
                 SizeSuffixes[mag]);
         }
-
-  
-
-        // Clears listview items sets counters to zero
-        private void button2_Click(object sender, EventArgs e)
-        {
-            this.RootFiles = null;
-            CleanAll();
-        }
         private void CleanAll()
         {
             _pdfs = new List<PdfToCount>();
-           
+
             listView1.Items.Clear();
             toolStripStatusLabel3.Text = @"0";
             toolStripStatusLabel4.Text = @"0";
@@ -161,7 +167,7 @@ namespace PDF_Page_Counter
         {
             Invoke(new Action<object>(args =>
             {
-                var handles = (string[]) e.Argument;
+                var handles = (string[])e.Argument;
                 foreach (var s in handles)
                     if (File.Exists(s))
                     {
@@ -181,7 +187,7 @@ namespace PDF_Page_Counter
 
         private void bgw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-          //  ActiveForm?.Hide();
+            //  ActiveForm?.Hide();
         }
 
         private void listView1_MouseClick(object sender, MouseEventArgs e)
@@ -205,68 +211,106 @@ namespace PDF_Page_Counter
 
         private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            toolStripStatusLabel3.Text = (Parse(toolStripStatusLabel3.Text) - 1).ToString();
-            toolStripStatusLabel4.Text = (Parse(toolStripStatusLabel4.Text) - Parse(listView1.SelectedItems[0].SubItems[3].Text)).ToString();
+            toolStripStatusLabel3.Text = (Int32.Parse(toolStripStatusLabel3.Text) - 1).ToString();
+            toolStripStatusLabel4.Text = (Int32.Parse(toolStripStatusLabel4.Text) - Int32.Parse(listView1.SelectedItems[0].SubItems[3].Text)).ToString();
             listView1.SelectedItems[0].Remove();
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-           try
+            using (FrmEmpresa form = new FrmEmpresa())
             {
-                SaveFileDialog saveFileDialog1 = new SaveFileDialog();
-                saveFileDialog1.Filter = "Planilha Excel|*.xlsx";
-                saveFileDialog1.Title = "Exportar";
-                saveFileDialog1.ShowDialog();
-
-                if (saveFileDialog1.FileName != "")
+                try
                 {
-                    string excelFile = saveFileDialog1.FileName;
-
-                    if (_pdfs.Count==0)
+                    DialogResult dr = form.ShowDialog();
+                    if (dr == DialogResult.OK)
                     {
-                        Cursor.Current = Cursors.Default;
-                        MessageBox.Show("Não foi possível exportar esta lista");
-                        return;
+                        SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+                        saveFileDialog1.Filter = "Planilha Excel|*.xlsx";
+                        saveFileDialog1.Title = "Exportar";
+                        saveFileDialog1.ShowDialog();
+
+                        if (saveFileDialog1.FileName != "")
+                        {
+                            string excelFile = saveFileDialog1.FileName;
+
+                            if (_pdfs.Count == 0)
+                            {
+                                Cursor.Current = Cursors.Default;
+                                MessageBox.Show("Não foi possível exportar esta lista");
+                                return;
+                            }
+                            var modelo = @"D:\Projetos\PDF-Page-Counter\Modelo001.xlsx";
+                            ExportExcelTemplate(
+                               form.Empresa,
+                                 form.Servico,
+                                 modelo,
+                                 excelFile,
+                                 _pdfs);
+                            // ExportXLSX(excelFile, _pdfs);
+
+                            System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(excelFile);
+                            psi.UseShellExecute = true;
+                            Process.Start(psi);
+                        }
                     }
-
-                    
-                    ExportXLSX(excelFile, _pdfs);
-
-                    System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(excelFile);
-                    psi.UseShellExecute = true;
-                    Process.Start(psi);
+                }
+                catch (Exception ex)
+                {
+                    Cursor.Current = Cursors.Default;
+                    MessageBox.Show("Falha interna, tente novamente " + ex);
+                    return;
                 }
             }
-            catch (Exception ex)
-            {
-                Cursor.Current = Cursors.Default;
-                MessageBox.Show("Falha interna, tente novamente " + ex);
-                return;
-            }
-
-
         }
-
-        private void ExportXLSX(string excelFile, List<PdfToCount> pdfs)
+        private void ExportExcelTemplate(EmpresaInfo empresa, ServicoInfo servico, string template, string excelFile, List<PdfToCount> pdfs)
         {
-            ExcelPackage pck = new ExcelPackage();
 
-            var wsDt = pck.Workbook.Worksheets.Add("Dados");
-            wsDt.Cells["A1"].LoadFromCollection(pdfs, true, TableStyles.Medium9);
-            wsDt.Cells[wsDt.Dimension.Address].AutoFitColumns();
+            var totalPaginas = pdfs.Sum(x => x.Paginas);
+            var totalArquivos = pdfs.Count();
+            var valorAPagar = totalPaginas * servico.ValorUnitario;
+            // string descritivo = $"Serviço de {servico.Descricao} de {totalPaginas} páginas e geração de {totalArquivos} arquivos em formato PDF. (R$ {servico.ValorUnitario} por página)";
+            //Create a stream of .xlsx file contained within my project using reflection
+            Stream stream = new MemoryStream( PDF_Page_Counter.Properties.Resources.Modelo001);// Assembly.GetExecutingAssembly().GetManifestResourceStream("Modelo001");
+            //Stream stream = File.OpenRead(template);
+
+            //EPPlusTest = Namespace/Project
+            //templates = folder
+            //VendorTemplate.xlsx = file
+
+            //ExcelPackage has a constructor that only requires a stream.
+            ExcelPackage pck = new OfficeOpenXml.ExcelPackage(stream);
+            var worksheetRecibo = pck.Workbook.Worksheets["Resumo"];
+            worksheetRecibo.Cells["B6"].Value = empresa.Nome;
+            //worksheetRecibo.Cells["E3"].Value = empresa.Endereco;
+            //worksheetRecibo.Cells["E4"].Value = empresa.Bairro;
+            worksheetRecibo.Cells["B7"].Value = empresa.CNPJ;
+            //worksheetRecibo.Cells["E6"].Value = empresa.Telefone;
+            //worksheetRecibo.Cells["E7"].Value = empresa.Email;
+            worksheetRecibo.Cells["B8"].Value = servico.ValorUnitario;
+
+            worksheetRecibo.Cells["B9"].Value = totalPaginas;
+
+            //worksheetRecibo.Cells["D17"].Value = descritivo;
+
+
+            var worksheetDados = pck.Workbook.Worksheets["Dados"];
+            worksheetDados.Cells["A1"].LoadFromCollection(pdfs, true, TableStyles.Medium9);
+            worksheetDados.Cells[worksheetDados.Dimension.Address].AutoFitColumns();
+
             var fi = new FileInfo(excelFile);
             if (fi.Exists)
                 fi.Delete();
             pck.SaveAs(fi);
+
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
             CleanAll();
-            if (this.RootFiles!=null)
+            if (this.RootFiles != null)
             {
-                  if (this.RootFiles.Length>0)
+                if (this.RootFiles.Length > 0)
                     _bgw.RunWorkerAsync(this.RootFiles);
             }
             while (_bgw.IsBusy)
