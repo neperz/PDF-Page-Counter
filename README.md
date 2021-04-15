@@ -10,3 +10,6 @@ Depende de iTextSharp.
 # Tela do projeto
 ![Tela do projeto](https://i.imgur.com/5e4Z1lA.png)
 
+# Te ajudei? faz um pix!
+![PIX](https://i.imgur.com/qk4c7Bs.jpg)
+
