@@ -6,6 +6,7 @@ Apnas araste a pasta ou os arquivos para dentro do programa.
 
 Depende de iTextSharp.
 
+Muito útil para fazer auditoria de páginas digitálizadas bem como gerar fátura para quem trabalhar vendendo digitalização de documentos.
 
 # Tela do projeto
 ![Tela do projeto](https://i.imgur.com/5e4Z1lA.png)
