@@ -41,7 +41,10 @@ namespace PDF_Page_Counter
 				this.Empresa = new EmpresaInfo { Nome = txtEmpresa.Text, CNPJ = txtCNPJ.Text };
 			}
 			else
-				return false;
+			{
+                MessageBox.Show(this, "CPNJ Inválido","Validação", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                return false;
+			}
             try
             {
 				CultureInfo culture = new CultureInfo("pt-BR");
